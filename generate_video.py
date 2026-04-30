@@ -240,12 +240,14 @@ class ChickenRabbitVideo(Scene):
         self.next_section("假设法")
 
         method_title = Text("方法一：假设法", font_size=48, color=YELLOW)
+        method_title.move_to(UP * 2.5)
         self.play(Write(method_title))
         self.wait(0.5)
         self.play(FadeOut(method_title))
 
         # 步骤1：假设全是鸡
         step1 = Text("假设35只全是鸡 → 70只脚", font_size=28)
+        step1.move_to(UP * 1.5)
         self.play(FadeIn(step1))
         self.wait(1)
 
@@ -263,7 +265,7 @@ class ChickenRabbitVideo(Scene):
 
         # 步骤2：实际脚数
         step2 = Text("实际94只脚 → 多了24只脚", font_size=28, color=RED)
-        step2.shift(DOWN * 0.8)
+        step2.move_to(DOWN * 0.5)
         self.play(FadeIn(step2))
         self.wait(1)
 
@@ -300,7 +302,7 @@ class ChickenRabbitVideo(Scene):
         self.wait(2)
 
         # 淡出切换
-        self.play(FadeOut(method_title), FadeOut(step1),
+        self.play(FadeOut(step1),
                   FadeOut(step2), FadeOut(step3), FadeOut(step4))
         self.clear()
 
@@ -308,6 +310,7 @@ class ChickenRabbitVideo(Scene):
         self.next_section("方程法")
 
         method2_title = Text("方法二：方程法", font_size=48, color=YELLOW)
+        method2_title.move_to(UP * 2.5)
         self.play(Write(method2_title))
         self.wait(0.5)
         self.play(FadeOut(method2_title))
@@ -316,7 +319,8 @@ class ChickenRabbitVideo(Scene):
         eq1 = Text("x + y = 35", font_size=40)
         eq2 = Text("2x + 4y = 94", font_size=40)
 
-        equations = VGroup(eq1, eq2).arrange(DOWN, buff=0.5)
+        equations = VGroup(eq1, eq2)
+        equations.move_to(UP * 1)
         self.play(FadeIn(equations))
         self.wait(1)
 
@@ -326,7 +330,7 @@ class ChickenRabbitVideo(Scene):
 
         # 求解过程
         solve_text = Text("解: x = 23, y = 12", font_size=36, color=GREEN)
-        solve_text.shift(DOWN * 2)
+        solve_text.move_to(DOWN * 1.5)
         self.play(FadeIn(solve_text))
         self.wait(2)
 
@@ -335,31 +339,34 @@ class ChickenRabbitVideo(Scene):
         self.wait(1)
 
         # 淡出切换
-        self.play(FadeOut(method2_title), FadeOut(equations), FadeOut(solve_text))
+        self.play(FadeOut(equations), FadeOut(solve_text))
         self.clear()
 
         # ========== 场景4: 验证 ==========
         self.next_section("验证")
 
         verify_title = Text("验证", font_size=48, color=YELLOW)
+        verify_title.move_to(UP * 2.5)
         self.play(Write(verify_title))
         self.wait(0.5)
         self.play(FadeOut(verify_title))
 
         # 验证1：头数
         v1 = Text("23 + 12 = 35 ✓ 头数正确", font_size=36, color=GREEN)
+        v1.move_to(UP * 1)
         self.play(FadeIn(v1))
         self.wait(1)
 
         # 验证2：脚数
         v2 = Text("2×23 + 4×12 = 94 ✓ 脚数正确", font_size=36, color=BLUE)
-        v2.shift(DOWN * 1)
+        v2.move_to(DOWN * 1)
         self.play(FadeIn(v2))
         self.wait(2)
 
         # 结语
-        self.play(FadeOut(verify_title), FadeOut(v1), FadeOut(v2))
+        self.play(FadeOut(v1), FadeOut(v2))
         conclusion = Text("鸡23只，兔12只", font_size=60, color=YELLOW)
+        conclusion.move_to(DOWN * 1.5)
         self.play(FadeIn(conclusion))
         self.wait(2)
 
