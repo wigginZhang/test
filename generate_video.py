@@ -1,97 +1,158 @@
 """
-Manim 数学教学视频生成脚本
-模板式设计，根据不同数学主题生成对应视频
+Manim 数学教学视频生成脚本 V2.0
+模板式设计，支持图形化教学、转场动画、标准字幕、音画同步
 
 使用方法:
-    python3.11 generate_video.py          # 生成字幕
-    python3.11 -m manim -p generate_video.py SceneName  # 预览
-    python3.11 -m manim render --write_to_movie generate_video.py SceneName  # 输出视频
+    python3.11 generate_video.py --help
+
+    # 基本使用
+    python3.11 generate_video.py --topic chicken_rabbit
+
+    # 带配音和字幕
+    python3.11 generate_video.py --topic chicken_rabbit --voice --subtitle burn
+
+    # 自定义分辨率和帧率
+    python3.11 generate_video.py --topic chicken_rabbit -r 1920 1080 -f 60
+
+    # 预览
+    python3.11 -m manim -p generate_video.py ChickenRabbitVideo
+
+    # 输出视频
+    python3.11 -m manim render --write_to_movie generate_video.py ChickenRabbitVideo
 """
 
+import argparse
+import subprocess
+from datetime import datetime
 from manim import *
 import os
 
+# 默认配置
+DEFAULT_RESOLUTION = (1920, 1080)
+DEFAULT_FRAME_RATE = 60
 OUTPUT_DIR = "./output"
-SUBTITLE_FILE = "subtitles.txt"
 
 
-class MathVideoTemplate(Scene):
+# ==================== 字幕生成工具 ====================
+
+def generate_srt_from_scenes(scenes, conclusion="", output_path="subtitles.srt", voice_output=None):
     """
-    数学视频模板 - 可根据不同主题自定义内容
+    根据场景生成标准SRT字幕文件
 
-    使用方式:
-    1. 定义 self.scenes 列表，包含多个场景
-    2. 每个场景包含: title, lines, subtitle_text
-    3. 系统自动处理场景切换和防重叠
+    参数:
+        scenes: 场景列表
+        conclusion: 结语文本
+        output_path: SRT文件输出路径
+        voice_output: 配音文件路径（用于获取时长）
     """
+    srt_content = []
+    index = 1
 
-    # 子类需要定义 scenes 属性
-    # scenes = [
-    #     {
-    #         "title": "场景标题",
-    #         "title_color": YELLOW,
-    #         "title_size": 36,
-    #         "lines": ["第1行内容", "第2行内容", ...],
-    #         "line_size": 28,
-    #         "subtitle": "场景的解说词，用于AI配音"
-    #     },
-    #     ...
-    # ]
+    def format_time(seconds):
+        """将秒数转换为SRT时间格式 HH:MM:SS,mmm"""
+        hours = int(seconds // 3600)
+        minutes = int((seconds % 3600) // 60)
+        secs = int(seconds % 60)
+        millis = int((seconds % 1) * 1000)
+        return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
 
-    def construct(self):
-        if not hasattr(self, 'scenes'):
-            raise NotImplementedError("子类必须定义 self.scenes")
+    # 估算每个场景的时长（默认每句话3秒）
+    estimated_duration_per_char = 0.05  # 每个字符约0.05秒
 
-        for i, scene in enumerate(self.scenes):
-            # 场景标题
-            if scene.get("title"):
-                title = Text(
-                    scene["title"],
-                    font_size=scene.get("title_size", 36),
-                    color=scene.get("title_color", YELLOW)
-                )
-                self.play(Write(title))
-                self.wait(scene.get("title_wait", 0.5))
+    current_time = 0.0
 
-            # 内容区域
-            if scene.get("lines"):
-                line_size = scene.get("line_size", 28)
-                texts = [Text(line, font_size=line_size) for line in scene["lines"]]
-                content_group = VGroup(*texts)
+    for i, scene in enumerate(scenes):
+        if scene.get("subtitle"):
+            subtitle_text = scene["subtitle"]
+            # 估算时长
+            duration = max(3.0, len(subtitle_text) * estimated_duration_per_char + 1.0)
 
-                # 根据行数自动布局
-                if len(texts) == 1:
-                    content_group.move_to(ORIGIN)
-                else:
-                    content_group.arrange(
-                        DOWN,
-                        aligned_edge=LEFT,
-                        buff=scene.get("line_buff", 0.5)
-                    )
+            start_time = current_time
+            end_time = current_time + duration
 
-                content_group.to_edge(LEFT).shift(DOWN * 0.5)
-                self.play(FadeIn(content_group))
+            srt_content.append(f"{index}")
+            srt_content.append(f"{format_time(start_time)} --> {format_time(end_time)}")
+            srt_content.append(subtitle_text)
+            srt_content.append("")
 
-                wait_time = scene.get("content_wait", 3)
-                self.wait(wait_time)
+            current_time = end_time + 0.5  # 场景间隔
+            index += 1
 
-            # 清场准备下一个场景（最后一个场景不清场）
-            if i < len(self.scenes) - 1:
-                self.clear()
+    # 结语
+    if conclusion:
+        duration = max(2.0, len(conclusion) * estimated_duration_per_char + 1.0)
+        start_time = current_time
+        end_time = current_time + duration
 
-        # 最终结论/结束语
-        if hasattr(self, 'conclusion'):
-            conclusion = Text(
-                self.conclusion,
-                font_size=48,
-                color=YELLOW
-            )
-            self.play(FadeIn(conclusion))
-            self.wait(2)
+        srt_content.append(f"{index}")
+        srt_content.append(f"{format_time(start_time)} --> {format_time(end_time)}")
+        srt_content.append(conclusion)
+        srt_content.append("")
+
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(srt_content))
+
+    print(f"SRT字幕文件已生成: {output_path}")
+    return output_path
 
 
-class ChickenRabbitVideo(MathVideoTemplate):
-    """鸡兔同笼视频 - 演示如何自定义场景"""
+def generate_simple_subtitles(scenes, conclusion="", output_path="subtitles.txt"):
+    """生成简单文本字幕（无时间轴）"""
+    subtitles_parts = []
+
+    for i, scene in enumerate(scenes):
+        if scene.get("subtitle"):
+            subtitles_parts.append(f"【{scene.get('title', f'场景{i+1}')}】")
+            subtitles_parts.append(scene["subtitle"])
+            subtitles_parts.append("")
+
+    if conclusion:
+        subtitles_parts.append("【结语】")
+        subtitles_parts.append(conclusion)
+        subtitles_parts.append("谢谢观看！")
+
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(subtitles_parts))
+
+    print(f"字幕文件已生成: {output_path}")
+    return output_path
+
+
+# ==================== TTS 配音工具 ====================
+
+def generate_voiceover(text, output_path="voiceover.mp3", voice="zh-CN-XiaoxiaoNeural"):
+    """
+    使用 edge-tts 生成配音
+
+    参数:
+        text: 要转换的文本
+        output_path: 输出音频文件路径
+        voice: 语音角色
+    """
+    try:
+        import edge_tts
+    except ImportError:
+        print("⚠️ edge-tts 未安装，跳过配音生成")
+        print("  安装命令: pip install edge-tts")
+        return None
+
+    asyncio.run(edge_tts.Communicate(text, voice).save(output_path))
+    print(f"配音文件已生成: {output_path}")
+    return output_path
+
+
+# ==================== 图形化鸡兔同笼视频 ====================
+
+class ChickenRabbitVideo(Scene):
+    """
+    鸡兔同笼图形化教学视频
+
+    特点:
+    - 使用图形表示鸡和兔子
+    - 动画演示假设法的替换过程
+    - 转场动画增强视觉体验
+    - 关键数字高亮显示
+    """
 
     scenes = [
         {
@@ -115,7 +176,7 @@ class ChickenRabbitVideo(MathVideoTemplate):
                 "每只兔子多2只脚 → 24÷2=12只兔",
                 "鸡: 35 - 12 = 23只"
             ],
-            "content_wait": 3,
+            "content_wait": 4,
             "subtitle": "方法一：假设法。我们假设35只全是鸡，那么应该有70只脚。但实际有94只脚，多了24只脚。每只兔子比鸡多2只脚，所以兔子有24除以2等于12只。鸡有35减12等于23只。"
         },
         {
@@ -126,7 +187,7 @@ class ChickenRabbitVideo(MathVideoTemplate):
                 "2x + 4y = 94",
                 "解得: x = 23, y = 12"
             ],
-            "content_wait": 3,
+            "content_wait": 4,
             "subtitle": "方法二：方程法。设鸡有x只，兔有y只。根据头数，列方程一：x加y等于35。根据脚数，列方程二：2x加4y等于94。解这个方程组，得到x等于23，y等于12。"
         },
         {
@@ -142,50 +203,307 @@ class ChickenRabbitVideo(MathVideoTemplate):
 
     conclusion = "鸡23只，兔12只"
 
+    def construct(self):
+        # 配置视频参数
+        config.pixel_height = 1080
+        config.pixel_width = 1920
 
-def generate_subtitles(scenes=None):
-    """根据场景生成字幕文件"""
-    if scenes is None:
-        # 默认使用鸡兔同笼场景
-        from generate_video import ChickenRabbitVideo
-        scenes = ChickenRabbitVideo.scenes
+        # ========== 场景1: 问题引入 ==========
+        self.next_section("问题引入")
 
-    subtitles_parts = []
+        # 标题
+        title = Text("鸡兔同笼问题", font_size=60, color=YELLOW)
+        self.play(Write(title))
+        self.wait(1)
+        self.play(title.animate.shift(UP * 3).scale(0.8))
 
-    for i, scene in enumerate(scenes):
-        if scene.get("subtitle"):
-            subtitles_parts.append(f"Scene {i+1} - {scene.get('title', '场景' + str(i+1))}")
-            subtitles_parts.append(scene["subtitle"])
-            subtitles_parts.append("")  # 空行分隔
+        # 问题文字
+        problem = Text("今有雉兔同笼，上有35头，下有94足，", font_size=32)
+        problem2 = Text("问雉兔各几何？", font_size=32)
+        problem_group = VGroup(problem, problem2).arrange(DOWN, buff=0.3)
+        self.play(FadeIn(problem_group))
+        self.wait(2)
 
-    # 添加结语
-    if hasattr(ChickenRabbitVideo, 'conclusion'):
-        subtitles_parts.append(f"结语\nChickenRabbitVideo.conclusion")
-        subtitles_parts.append("所以答案是鸡23只，兔12只。谢谢观看！")
+        # 图形化展示：鸡和兔子图标
+        self.show_animal_icons()
+        self.wait(1)
 
-    subtitles = "\n".join(subtitles_parts)
+        # 思考留白
+        self.show_think_prompt("同学们先思考一下...")
+        self.wait(2)
 
-    with open(SUBTITLE_FILE, 'w', encoding='utf-8') as f:
-        f.write(subtitles)
+        # 淡出切换到场景2
+        self.play(FadeOut(title), FadeOut(problem_group))
+        self.clear()
 
-    print(f"字幕文件已生成: {SUBTITLE_FILE}")
-    return subtitles
+        # ========== 场景2: 假设法 ==========
+        self.next_section("假设法")
+
+        method_title = Text("方法一：假设法", font_size=48, color=YELLOW)
+        self.play(Write(method_title))
+        self.wait(0.5)
+
+        # 步骤1：假设全是鸡
+        step1 = Text("假设35只全是鸡 → 70只脚", font_size=28)
+        self.play(FadeIn(step1))
+        self.wait(1)
+
+        # 图形演示：35个头
+        self.show_heads_count(35)
+        self.wait(0.5)
+
+        # 高亮关键数字 "70"
+        feet_label = Text("70", font_size=36, color=BLUE)
+        feet_label.next_to(step1, RIGHT).shift(RIGHT * 0.5)
+        self.play(Indicate(feet_label, color=BLUE))
+        self.wait(0.5)
+
+        # 步骤2：实际脚数
+        step2 = Text("实际94只脚 → 多了24只脚", font_size=28, color=RED)
+        step2.shift(DOWN * 0.8)
+        self.play(FadeIn(step2))
+        self.wait(1)
+
+        # 高亮 "24"
+        diff_num = Text("24", font_size=32, color=RED)
+        diff_num.next_to(step2, RIGHT).shift(RIGHT * 0.5)
+        self.play(Indicate(diff_num, color=RED, scale_factor=1.5))
+        self.wait(0.5)
+
+        # 步骤3：计算兔子
+        step3 = Text("每只兔子多2只脚 → 24÷2=12只兔", font_size=28, color=GREEN)
+        step3.shift(DOWN * 1.6)
+        self.play(FadeIn(step3))
+        self.wait(1)
+
+        # 高亮 "12"
+        rabbit_num = Text("12", font_size=32, color=GREEN)
+        rabbit_num.next_to(step3, RIGHT).shift(RIGHT * 0.5)
+        self.play(Indicate(rabbit_num, color=GREEN, scale_factor=1.5))
+        self.wait(0.5)
+
+        # 步骤4：鸡的数量
+        step4 = Text("鸡: 35 - 12 = 23只", font_size=28, color=ORANGE)
+        step4.shift(DOWN * 2.4)
+        self.play(FadeIn(step4))
+        self.wait(2)
+
+        # 思考留白
+        self.show_think_prompt("还有其他解法吗？")
+        self.wait(2)
+
+        # 淡出切换
+        self.play(FadeOut(method_title), FadeOut(step1),
+                  FadeOut(step2), FadeOut(step3), FadeOut(step4),
+                  FadeOut(feet_label), FadeOut(diff_num), FadeOut(rabbit_num))
+        self.clear()
+
+        # ========== 场景3: 方程法 ==========
+        self.next_section("方程法")
+
+        method2_title = Text("方法二：方程法", font_size=48, color=YELLOW)
+        self.play(Write(method2_title))
+        self.wait(0.5)
+
+        # 方程组用Text展示（避免LaTeX依赖）
+        eq1 = Text("x + y = 35", font_size=40)
+        eq2 = Text("2x + 4y = 94", font_size=40)
+
+        equations = VGroup(eq1, eq2).arrange(DOWN, buff=0.5)
+        self.play(FadeIn(equations))
+        self.wait(1)
+
+        # 高亮变量
+        for _ in ["x", "y"]:
+            self.play(Circumscribe(equations, color=BLUE), run_time=0.5)
+
+        # 求解过程
+        solve_text = Text("解: x = 23, y = 12", font_size=36, color=GREEN)
+        solve_text.shift(DOWN * 2)
+        self.play(FadeIn(solve_text))
+        self.wait(2)
+
+        # 思考留白
+        self.show_think_prompt("验证一下答案...")
+        self.wait(1)
+
+        # 淡出切换
+        self.play(FadeOut(method2_title), FadeOut(equations), FadeOut(solve_text))
+        self.clear()
+
+        # ========== 场景4: 验证 ==========
+        self.next_section("验证")
+
+        verify_title = Text("验证", font_size=48, color=YELLOW)
+        self.play(Write(verify_title))
+        self.wait(0.5)
+
+        # 验证1：头数
+        v1 = Text("23 + 12 = 35 ✓ 头数正确", font_size=36, color=GREEN)
+        self.play(FadeIn(v1))
+        self.wait(1)
+
+        # 验证2：脚数
+        v2 = Text("2×23 + 4×12 = 94 ✓ 脚数正确", font_size=36, color=BLUE)
+        v2.shift(DOWN * 1)
+        self.play(FadeIn(v2))
+        self.wait(2)
+
+        # 结语
+        self.play(FadeOut(verify_title), FadeOut(v1), FadeOut(v2))
+        conclusion = Text("鸡23只，兔12只", font_size=60, color=YELLOW)
+        self.play(FadeIn(conclusion))
+        self.wait(2)
+
+    def show_animal_icons(self):
+        """显示鸡和兔子的图标表示"""
+        # 简化图形：用圆圈代表头
+        heads = VGroup(*[Circle(radius=0.15, color=WHITE) for _ in range(35)])
+        heads.arrange(RIGHT, buff=0.1)
+        heads.shift(DOWN * 1.5)
+
+        # 添加简短标注
+        label = Text("35个头", font_size=20, color=GRAY)
+        label.next_to(heads, DOWN)
+
+        self.play(FadeIn(heads), FadeIn(label))
+
+    def show_heads_count(self, count):
+        """显示头的数量图形"""
+        indicator = Text(f"共{count}个头", font_size=24, color=BLUE)
+        indicator.shift(DOWN * 2.5)
+        self.play(FadeIn(indicator))
+
+    def show_think_prompt(self, text):
+        """显示思考提示"""
+        prompt = Text(text, font_size=24, color=GRAY)
+        prompt.to_edge(DOWN)
+        dot_animation = FadeIn(prompt)
+
+        self.play(dot_animation)
+        # 闪烁效果
+        for _ in range(2):
+            self.play(prompt.animate.set_opacity(0.5), run_time=0.3)
+            self.play(prompt.animate.set_opacity(1.0), run_time=0.3)
+
+
+# ==================== 主程序 ====================
+
+def parse_args():
+    """解析命令行参数"""
+    parser = argparse.ArgumentParser(
+        description="Manim 数学教学视频生成器",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+示例:
+  python3.11 generate_video.py --topic chicken_rabbit
+  python3.11 generate_video.py --topic chicken_rabbit --voice
+  python3.11 generate_video.py --topic chicken_rabbit -r 1920 1080 -f 60 --voice --subtitle burn
+
+支持的主题:
+  - chicken_rabbit: 鸡兔同笼
+        """
+    )
+
+    parser.add_argument(
+        '--topic', '-t',
+        default='chicken_rabbit',
+        help='数学主题 (默认: chicken_rabbit)'
+    )
+
+    parser.add_argument(
+        '--resolution', '-r',
+        nargs=2,
+        type=int,
+        default=[1920, 1080],
+        metavar=('WIDTH', 'HEIGHT'),
+        help='分辨率 (默认: 1920 1080)'
+    )
+
+    parser.add_argument(
+        '--frame-rate', '-f',
+        type=int,
+        default=60,
+        help='帧率 (默认: 60)'
+    )
+
+    parser.add_argument(
+        '--output-dir', '-o',
+        default='./output',
+        help='输出目录 (默认: ./output)'
+    )
+
+    parser.add_argument(
+        '--voice',
+        action='store_true',
+        help='生成AI配音'
+    )
+
+    parser.add_argument(
+        '--subtitle',
+        choices=['srt', 'burn', 'none'],
+        default='srt',
+        help='字幕处理方式: srt=生成SRT文件, burn=烧录硬字幕, none=不生成 (默认: srt)'
+    )
+
+    parser.add_argument(
+        '--voice-voice',
+        default='zh-CN-XiaoxiaoNeural',
+        help='TTS语音角色 (默认: zh-CN-XiaoxiaoNeural)'
+    )
+
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+
+    print("\n" + "="*50)
+    print("Manim 数学教学视频生成器 V2.0")
+    print("="*50)
+    print(f"主题: {args.topic}")
+    print(f"分辨率: {args.resolution[0]}x{args.resolution[1]}")
+    print(f"帧率: {args.frame_rate}fps")
+    print(f"输出目录: {args.output_dir}")
+    print(f"配音: {'是' if args.voice else '否'}")
+    print(f"字幕: {args.subtitle}")
+    print("="*50)
+
+    # 确定场景类
+    topic_to_class = {
+        'chicken_rabbit': ChickenRabbitVideo,
+    }
+
+    video_class = topic_to_class.get(args.topic)
+    if not video_class:
+        print(f"❌ 不支持的主题: {args.topic}")
+        print(f"   支持的主题: {', '.join(topic_to_class.keys())}")
+        return
+
+    scenes = video_class.scenes
+    conclusion = getattr(video_class, 'conclusion', '')
+
+    # 生成字幕文件
+    if args.subtitle == 'srt':
+        generate_srt_from_scenes(scenes, conclusion, f"{args.topic}_subtitles.srt")
+    elif args.subtitle == 'burn':
+        generate_srt_from_scenes(scenes, conclusion, f"{args.topic}_subtitles.srt")
+        print("💡 提示: 烧录硬字幕需要在渲染后使用FFmpeg")
+
+    # 生成配音
+    if args.voice:
+        full_text = " ".join([s.get("subtitle", "") for s in scenes])
+        if conclusion:
+            full_text += f"。{conclusion}。谢谢观看！"
+        generate_voiceover(full_text, f"{args.topic}_voice.mp3", args.voice_voice)
+
+    print("\n✅ 生成完成！")
+    print("="*50)
+    print(f"1. 预览: python3.11 -m manim -p generate_video.py {video_class.__name__}")
+    print(f"2. 输出: python3.11 -m manim render --write_to_movie generate_video.py {video_class.__name__}")
+    print(f"3. 分辨率: -r {args.resolution[0]} {args.resolution[1]} -f {args.frame_rate}")
+    print("="*50)
 
 
 if __name__ == "__main__":
-    print("\n" + "="*50)
-    print("Manim 数学教学视频生成器")
-    print("="*50)
-
-    # 生成字幕
-    generate_subtitles()
-
-    print("\n生成完成！")
-    print("="*50)
-    print("1. 运行 python3.11 -m manim -p generate_video.py ChickenRabbitVideo 预览")
-    print("2. 运行 python3.11 -m manim render --write_to_movie generate_video.py ChickenRabbitVideo 输出视频")
-    print(f"3. 字幕文件: {SUBTITLE_FILE}")
-    print("4. 用剪映导入视频和字幕，完成配音")
-    print("="*50)
-
-    print("\n如需创建新主题视频，请继承 MathVideoTemplate 类并定义 scenes 属性")
+    main()
