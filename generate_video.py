@@ -307,7 +307,6 @@ class ChickenRabbitVideo(Scene):
         self.next_section("方程法")
 
         method2_title = Text("方法二：方程法", font_size=48, color=YELLOW)
-        method2_title.shift(UP * 2.5)  # 明确设置位置，避免与旧内容重叠
         self.play(Write(method2_title))
         self.wait(0.5)
 
@@ -341,7 +340,6 @@ class ChickenRabbitVideo(Scene):
         self.next_section("验证")
 
         verify_title = Text("验证", font_size=48, color=YELLOW)
-        verify_title.shift(UP * 2.5)
         self.play(Write(verify_title))
         self.wait(0.5)
 
