@@ -279,7 +279,7 @@ class ChickenRabbitVideo(Scene):
 
         # 步骤3：计算兔子
         step3 = Text("每只兔子多2只脚 → 24÷2=12只兔", font_size=28, color=GREEN)
-        step3.shift(DOWN * 1.6)
+        step3.move_to(DOWN * 1.1)
         self.play(FadeIn(step3))
         self.wait(1)
 
@@ -293,7 +293,7 @@ class ChickenRabbitVideo(Scene):
 
         # 步骤4：鸡的数量
         step4 = Text("鸡: 35 - 12 = 23只", font_size=28, color=ORANGE)
-        step4.shift(DOWN * 2.4)
+        step4.move_to(DOWN * 1.9)
         self.play(FadeIn(step4))
         self.wait(2)
 
@@ -319,8 +319,8 @@ class ChickenRabbitVideo(Scene):
         eq1 = Text("x + y = 35", font_size=40)
         eq2 = Text("2x + 4y = 94", font_size=40)
 
-        equations = VGroup(eq1, eq2)
-        equations.move_to(UP * 1)
+        equations = VGroup(eq1, eq2).arrange(DOWN, buff=0.8)
+        equations.move_to(UP * 1.2)
         self.play(FadeIn(equations))
         self.wait(1)
 
