@@ -242,6 +242,7 @@ class ChickenRabbitVideo(Scene):
         method_title = Text("方法一：假设法", font_size=48, color=YELLOW)
         self.play(Write(method_title))
         self.wait(0.5)
+        self.play(FadeOut(method_title))
 
         # 步骤1：假设全是鸡
         step1 = Text("假设35只全是鸡 → 70只脚", font_size=28)
@@ -309,6 +310,7 @@ class ChickenRabbitVideo(Scene):
         method2_title = Text("方法二：方程法", font_size=48, color=YELLOW)
         self.play(Write(method2_title))
         self.wait(0.5)
+        self.play(FadeOut(method2_title))
 
         # 方程组用Text展示（避免LaTeX依赖）
         eq1 = Text("x + y = 35", font_size=40)
@@ -342,6 +344,7 @@ class ChickenRabbitVideo(Scene):
         verify_title = Text("验证", font_size=48, color=YELLOW)
         self.play(Write(verify_title))
         self.wait(0.5)
+        self.play(FadeOut(verify_title))
 
         # 验证1：头数
         v1 = Text("23 + 12 = 35 ✓ 头数正确", font_size=36, color=GREEN)
