@@ -255,8 +255,10 @@ class ChickenRabbitVideo(Scene):
         # 高亮关键数字 "70"
         feet_label = Text("70", font_size=36, color=BLUE)
         feet_label.next_to(step1, RIGHT).shift(RIGHT * 0.5)
+        self.play(FadeIn(feet_label))
         self.play(Indicate(feet_label, color=BLUE))
         self.wait(0.5)
+        self.play(FadeOut(feet_label))
 
         # 步骤2：实际脚数
         step2 = Text("实际94只脚 → 多了24只脚", font_size=28, color=RED)
@@ -267,8 +269,10 @@ class ChickenRabbitVideo(Scene):
         # 高亮 "24"
         diff_num = Text("24", font_size=32, color=RED)
         diff_num.next_to(step2, RIGHT).shift(RIGHT * 0.5)
+        self.play(FadeIn(diff_num))
         self.play(Indicate(diff_num, color=RED, scale_factor=1.5))
         self.wait(0.5)
+        self.play(FadeOut(diff_num))
 
         # 步骤3：计算兔子
         step3 = Text("每只兔子多2只脚 → 24÷2=12只兔", font_size=28, color=GREEN)
@@ -279,8 +283,10 @@ class ChickenRabbitVideo(Scene):
         # 高亮 "12"
         rabbit_num = Text("12", font_size=32, color=GREEN)
         rabbit_num.next_to(step3, RIGHT).shift(RIGHT * 0.5)
+        self.play(FadeIn(rabbit_num))
         self.play(Indicate(rabbit_num, color=GREEN, scale_factor=1.5))
         self.wait(0.5)
+        self.play(FadeOut(rabbit_num))
 
         # 步骤4：鸡的数量
         step4 = Text("鸡: 35 - 12 = 23只", font_size=28, color=ORANGE)
@@ -294,8 +300,7 @@ class ChickenRabbitVideo(Scene):
 
         # 淡出切换
         self.play(FadeOut(method_title), FadeOut(step1),
-                  FadeOut(step2), FadeOut(step3), FadeOut(step4),
-                  FadeOut(feet_label), FadeOut(diff_num), FadeOut(rabbit_num))
+                  FadeOut(step2), FadeOut(step3), FadeOut(step4))
         self.clear()
 
         # ========== 场景3: 方程法 ==========
